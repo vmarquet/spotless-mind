@@ -7,8 +7,10 @@ from src.model.node import node
 
 def recursive_scan(father):
 	"""To add recursively every file to the tree from the root of the scan"""
+
+	# for performance reasons, we will scan files with mediainfo only if they have a videofile extension
 	ext_video = ['.divx','.avi','.mp4','.mkv','.wmv','.flv','.mov','.mpg','.mpeg','.rmvb','.m4v','.ts','.vlc']
-	# PENSER A GERER LE CAS OU LES EXT SONT EN MAJUSCULE
+
 	curdir = os.path.join(father.path, father.name)
 	# print "recursive-scan: i visited " + curdir
 	for file in os.listdir(curdir):  # for every file
@@ -16,11 +18,12 @@ def recursive_scan(father):
 		file_name, file_extension = os.path.splitext(file)
 
 		# TODO: we get filesize (in bytes)
-
-		# we use MediaInfo to get video informations if it's a video file
-		if file_extension in ext_video:
+		# we could also get creation date or last modification date
+		
+		# in order to deal with case matching, we convert extension to lowercase, and then we compare
+		if file_extension.lower() in ext_video:
+			# we use MediaInfo to get video informations if it's a video file
 			mediainfo(new_node)
-			new_node.isVid = True
 
 		father.children.append(new_node)
 		if os.path.isdir(os.path.join(curdir, file)):  # if the file is a directory
@@ -29,13 +32,27 @@ def recursive_scan(father):
 		else:  # if the file is not a directory
 			new_node.isDir = False
 
+
 def mediainfo(node):
-	"""To update video informations in the node"""
+	"""To collect video informations about the file in the node"""
+
 	file_path = os.path.join(node.path, node.name)
-	print(file_path)
+	print "MediaInfo: analysing file " + file_path
+
+	# we scan the file with pymediainfo
 	media_info = MediaInfo.parse(file_path)
-	if media_info == None:  # not sure if usefull
+
+	# if it's not a valid videofile, an exception will be raised when we will try to read the tracks
+	try:
+		test = media_info.tracks
+	except AttributeError:
+		node.isVid = False
 		return
+
+	# now we're sure it's a valid video file
+	node.isVid = True
+
+	# we collect data about video, audio and subtitle tracks
 	node.tracks_audio = list()
 	node.tracks_subtitles = list()
 

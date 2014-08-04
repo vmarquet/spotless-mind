@@ -80,12 +80,12 @@ class customQMainWindow(QtGui.QMainWindow):
 
 		# we create the list view to display files
 		self.view_list = QtGui.QListView()
+		self.view_list.doubleClicked.connect(self.popupFileInfo)
 		mainWidget.addWidget(self.view_list) 
 
 
 	def loadFile(self):
 		"""To open a file containing a filesystem data"""
-		#print("loadFile")
 		# "Fichier mvl (*.mvl)" -> pour filtrer sur l'extension
 		file_path = QtGui.QFileDialog.getOpenFileName(self, "Load a list", QtCore.QString(), "Fichier mvl (*.mvl)")
 		if file_path == "":
@@ -105,10 +105,7 @@ class customQMainWindow(QtGui.QMainWindow):
 		"""To save a filesystem data to a file"""
 		#print("saveFile")
 		if len(self.root_node_list) == 0:
-			mb = QtGui.QMessageBox()
-			mb.setText("Nothing to save")
-			mb.setWindowTitle(" ")
-			mb.exec_()
+			QtGui.QMessageBox.information(self, " ", "Nothing to save")
 			return
 		filter = QtCore.QString("Movie List .mvl (*.mvl)")
 		file_path, filter = QtGui.QFileDialog.getSaveFileNameAndFilter(self, "Save a list", "", filter)
@@ -148,29 +145,29 @@ class customQMainWindow(QtGui.QMainWindow):
 
 	def updateFileDisplay(self, index):
 		"""To update file display in the right panel of the window""" 
-		#print("DEBUG: updateFileDisplay")
 		# we create a new model
 		self.model_file = QtGui.QStandardItemModel(0,1)
 		self.model_file.setHorizontalHeaderItem(0, QtGui.QStandardItem("Files"))
 		displayFilesInDirFromIndex(index, self.model_file, self.model_dir)
 		self.view_list.setModel(self.model_file)
-		self.view_list.doubleClicked.connect(self.popupFileInfo)
 
 	def newFile(self):
 		if len(self.root_node_list) > 0:
 			reply = QtGui.QMessageBox.question(self,'Message',"Do you want to save current list ?",
-			QtGui.QMessageBox.Yes |	QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+			QtGui.QMessageBox.Cancel | QtGui.QMessageBox.Yes |	QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+			if reply == QtGui.QMessageBox.Cancel:
+				return
 			if reply == QtGui.QMessageBox.Yes:
 				self.saveFile()
 		self.clear()
 
 	def clear(self):
 		"""To clear display"""
-		#print("DEBUG: clearing")
 		for i in range(0,len(self.root_item_list)):
 			del self.root_item_list[0]
 		for i in range(0,len(self.root_node_list)):
 			del self.root_node_list[0]
+
 		# new dir model
 		self.model_dir = QtGui.QStandardItemModel(0,1)  # rows will be append after
 		self.model_dir.setHorizontalHeaderItem(0, QtGui.QStandardItem("Directories"))
@@ -183,15 +180,9 @@ class customQMainWindow(QtGui.QMainWindow):
 
 	def newSearch(self):
 		"""To search for a film in the list"""
-		mb = QtGui.QMessageBox()
-		mb.setText("Not implemented yet  :(")
-		mb.setWindowTitle("coming soon !")
-		# mb.critical(1,"Error","An error has occured !")
-		mb.setFixedSize(500,200)
-		mb.exec_()
+		QtGui.QMessageBox.information(self, "coming soon !", "Not implemented yet  :(")
 
 	def popupFileInfo(self,index):
-		#print "popupFileInfo"
 		item = self.model_file.itemFromIndex(index)
 		popup = popupFileInfo(item.node)
 		popup.exec_()
