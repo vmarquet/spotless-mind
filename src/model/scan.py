@@ -4,6 +4,7 @@
 import os
 from pymediainfo import MediaInfo
 from src.model.node import node, GeneralMetadata, VideoTrack, AudioTrack, SubtitleTrack
+from src.model.model import model
 
 def recursive_scan(father):
 	"""To add recursively every file to the tree from the root of the scan"""
@@ -21,7 +22,7 @@ def recursive_scan(father):
 		# we could also get creation date or last modification date
 		
 		# in order to deal with case matching, we convert extension to lowercase, and then we compare
-		if file_extension.lower() in ext_video:
+		if file_extension.lower() in ext_video and model.recordVideoMetadatas == True:
 			# we use MediaInfo to get video informations if it's a video file
 			mediainfo(new_node)
 		else:

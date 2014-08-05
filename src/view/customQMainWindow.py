@@ -18,7 +18,6 @@ class customQMainWindow(QtGui.QMainWindow):
 		self.model_file = None
 		self.view_tree = None   # to display directories
 		self.view_list = None   # to display files
-		self.root_node_list = list()
 		self.root_item_list = list()
 		self.init()
 
@@ -91,11 +90,11 @@ class customQMainWindow(QtGui.QMainWindow):
 		if file_path == "":
 			print("User canceled")
 			return
-		result, self.root_node_list = load_pickle(file_path)
+		result = load_pickle(file_path)
 		if result == False:  # if problem
 			return
 		# we convert the trees of nodes to trees of items to display them
-		for root in self.root_node_list:
+		for root in model.root_node_list:
 			root_item = convertBinaryTreeToDisplayDirOnly(root)
 			self.model_dir.appendRow(root_item)
 			self.root_item_list.append(root_item)
@@ -104,7 +103,7 @@ class customQMainWindow(QtGui.QMainWindow):
 	def saveFile(self):
 		"""To save a filesystem data to a file"""
 		#print("saveFile")
-		if len(self.root_node_list) == 0:
+		if len(model.root_node_list) == 0:
 			QtGui.QMessageBox.information(self, " ", "Nothing to save")
 			return
 		filter = QtCore.QString("Movie List .mvl (*.mvl)")
@@ -120,7 +119,7 @@ class customQMainWindow(QtGui.QMainWindow):
 			if ext != ".mvl":
 				file_path = file_path + ".mvl"
 			# print "Choosen file: " + file_path
-		save_pickle(file_path, self.root_node_list)
+		save_pickle(file_path)
 
 
 	def scanDir(self):
@@ -137,7 +136,7 @@ class customQMainWindow(QtGui.QMainWindow):
 			root = node(os.path.dirname(unicode(dir)),os.path.basename(unicode(dir)), None)
 			root.isDir = True
 			recursive_scan(root)
-			self.root_node_list.append(root)
+			model.root_node_list.append(root)
 			# we convert the tree of nodes to a tree of items to display it
 			root_item = convertBinaryTreeToDisplayDirOnly(root)
 			self.model_dir.appendRow(root_item)
@@ -152,7 +151,7 @@ class customQMainWindow(QtGui.QMainWindow):
 		self.view_list.setModel(self.model_file)
 
 	def newFile(self):
-		if len(self.root_node_list) > 0:
+		if len(model.root_node_list) > 0:
 			reply = QtGui.QMessageBox.question(self,'Message',"Do you want to save current list ?",
 			QtGui.QMessageBox.Cancel | QtGui.QMessageBox.Yes |	QtGui.QMessageBox.No, QtGui.QMessageBox.No)
 			if reply == QtGui.QMessageBox.Cancel:
@@ -165,8 +164,8 @@ class customQMainWindow(QtGui.QMainWindow):
 		"""To clear display"""
 		for i in range(0,len(self.root_item_list)):
 			del self.root_item_list[0]
-		for i in range(0,len(self.root_node_list)):
-			del self.root_node_list[0]
+		for i in range(0,len(model.root_node_list)):
+			del model.root_node_list[0]
 
 		# new dir model
 		self.model_dir = QtGui.QStandardItemModel(0,1)  # rows will be append after

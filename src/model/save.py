@@ -7,13 +7,14 @@ import pickle
 from xml.dom import minidom
 from myXML import *
 from src.model.node import node
+from src.model.model import model
 
-def save_pickle(file_path, root_node_list):
+def save_pickle(file_path):
 	"""To save a list in a file with pickler"""
 	with open(file_path, 'wb') as file:
 		pickler = pickle.Pickler(file)
-		pickler.dump("1.0")
-		pickler.dump(root_node_list)
+		pickler.dump(model.version)
+		pickler.dump(model.root_node_list)
 		file.close()
 
 def save_XML(root):
