@@ -3,7 +3,7 @@
 
 import os
 from pymediainfo import MediaInfo
-from src.model.node import node
+from src.model.node import node, GeneralMetadata, VideoTrack, AudioTrack, SubtitleTrack
 
 def recursive_scan(father):
 	"""To add recursively every file to the tree from the root of the scan"""
@@ -24,6 +24,8 @@ def recursive_scan(father):
 		if file_extension.lower() in ext_video:
 			# we use MediaInfo to get video informations if it's a video file
 			mediainfo(new_node)
+		else:
+			new_node.isVid = False
 
 		father.children.append(new_node)
 		if os.path.isdir(os.path.join(curdir, file)):  # if the file is a directory
@@ -34,7 +36,7 @@ def recursive_scan(father):
 
 
 def mediainfo(node):
-	"""To collect video informations about the file in the node"""
+	"""To collect video informations about the file and store it in the node structure"""
 
 	file_path = os.path.join(node.path, node.name)
 	print "MediaInfo: analysing file " + file_path
@@ -45,45 +47,70 @@ def mediainfo(node):
 	# if it's not a valid videofile, an exception will be raised when we will try to read the tracks
 	try:
 		test = media_info.tracks
+		node.isVid = True
 	except AttributeError:
 		node.isVid = False
 		return
 
-	# now we're sure it's a valid video file
-	node.isVid = True
+	# we create lists to record video, audio and subtitles tracks
+	node.videoTracks = list()
+	node.audioTracks = list()
+	node.subtitleTracks = list()
 
-	# we collect data about video, audio and subtitle tracks
-	node.tracks_audio = list()
-	node.tracks_subtitles = list()
-
+	# we record matadatas given by MediaInfo
 	for track in media_info.tracks:
+
+		# general information: duration, filesize
 		if track.track_type == 'General':
-			# NB: track.duration is given in milliseconds
-			duration_sec_total = int(float(track.duration))/1000
-			duration_hour = int(duration_sec_total/3600)
-			duration_min = (duration_sec_total/60)%60
-			node.duration = str(duration_hour) + "h" + str(duration_min)
-			if track.file_size < 1000000:
-				node.size =  str(track.file_size/1000000) + " mb"
+			metadata = GeneralMetadata()
+
+			# we get duration (given in milliseconds)
+			if track.duration == None:
+				metadata.duration = "?"
 			else:
-				node.size =  str(track.file_size/1000000000) + "." + str((track.file_size/1000000)%1000) + " gb"
+				duration_sec_total = int(float(track.duration))/1000
+				duration_hour = int(duration_sec_total/3600)
+				duration_min = (duration_sec_total/60)%60
+				metadata.duration = str(duration_hour) + "h" + str(duration_min)
+
+			# we get format
+			metadata.format = toStr(track.format)
+
+			node.generalMetadata = metadata
+
+		# video track: dimension of pictures, framerate, codec
 		if track.track_type == 'Video':
-			node.definition = str(track.width) + "*" + str(track.height)
-			node.frame_rate = str(track.frame_rate)
-			node.codec = str(track.codec)
+			video_track = VideoTrack()
+			video_track.definition = toStr(track.width) + "*" + toStr(track.height)
+			video_track.framerate = toStr(track.frame_rate)
+			video_track.format = toStr(track.format)
+			video_track.codec = toStr(track.codec)
+			node.videoTracks.append(video_track)
+
+		# audio track: language, format, tags (default, forced)
 		if track.track_type == 'Audio':
-			l = list()
-			l.append(str(track.language))
-			l.append(str(track.format))
-			l.append(str(track.default))
-			l.append(str(track.forced))
-			node.tracks_audio.append(l)
+			audio_track = AudioTrack()
+			audio_track.language = toStr(track.language)
+			audio_track.channels = toStr(track.channels)
+			audio_track.format = toStr(track.format)
+			audio_track.codec = toStr(track.codec)
+			audio_track.default = toStr(track.default)
+			audio_track.forced = toStr(track.forced)
+			node.audioTracks.append(audio_track)
+
+		# subtitle track: language, format, tags (default, forced)
 		if track.track_type == 'Text':
-			l = list()
-			l.append(str(track.language))
-			l.append(str(track.format))
-			l.append(str(track.default))
-			l.append(str(track.forced))
-			node.tracks_subtitles.append(l)
+			subtitle_track = SubtitleTrack()
+			subtitle_track.language = toStr(track.language)
+			subtitle_track.format = toStr(track.format)
+			subtitle_track.codec = toStr(track.codec)
+			subtitle_track.default = toStr(track.default)
+			subtitle_track.forced = toStr(track.forced)
+			node.subtitleTracks.append(subtitle_track)
 
 
+def toStr(parameter):
+	if parameter == None:
+		return "?"
+	else:
+		return str(parameter)
