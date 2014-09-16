@@ -1,10 +1,11 @@
-#!/usr/bin/python3.2
+#!/usr/bin/python2.7
 # -*-coding:Utf-8 -*   # linux
 
 import pickle
 from PyQt4 import QtGui, QtCore
 from src.view.customQPushButton import customQPushButton
 from src.view.popupFileInfo import popupFileInfo
+from src.view.popupWaitEndScan import popupWaitEndScan
 from src.model.load import *
 from src.model.save import *
 from src.model.scan import *
@@ -14,11 +15,11 @@ class customQMainWindow(QtGui.QMainWindow):
 
 	def __init__(self):
 		QtGui.QMainWindow.__init__(self)
-		self.model_dir = None
+		
 		self.model_file = None
 		self.view_tree = None   # to display directories
 		self.view_list = None   # to display files
-		self.root_item_list = list()
+
 		self.init()
 
 	def init(self):
@@ -67,13 +68,13 @@ class customQMainWindow(QtGui.QMainWindow):
 		toolbar.addSeparator()
 		toolbar.addWidget(buttonAbout)
 
-		self.model_dir = QtGui.QStandardItemModel(0,1)  # rows will be append after
-		self.model_dir.setHorizontalHeaderItem(0, QtGui.QStandardItem("Directories"))
+		model.model_dir = QtGui.QStandardItemModel(0,1)  # rows will be appended after
+		model.model_dir.setHorizontalHeaderItem(0, QtGui.QStandardItem("Directories"))
 
 		# we create the tree view to display directories
 		self.view_tree = QtGui.QTreeView()
 		mainWidget.addWidget(self.view_tree)
-		self.view_tree.setModel(self.model_dir)
+		self.view_tree.setModel(model.model_dir)
 		# we connect the view to a function to update file display (right panel)
 		self.view_tree.clicked.connect(self.updateFileDisplay)
 
@@ -96,8 +97,8 @@ class customQMainWindow(QtGui.QMainWindow):
 		# we convert the trees of nodes to trees of items to display them
 		for root in model.root_node_list:
 			root_item = convertBinaryTreeToDisplayDirOnly(root)
-			self.model_dir.appendRow(root_item)
-			self.root_item_list.append(root_item)
+			model.model_dir.appendRow(root_item)
+			model.root_item_list.append(root_item)
 
 
 	def saveFile(self):
@@ -125,29 +126,33 @@ class customQMainWindow(QtGui.QMainWindow):
 	def scanDir(self):
 		"""To scan a filesystem to record data"""
 		print("scanDir")
-		dir = QtGui.QFileDialog.getExistingDirectory(self, "Choose a directory to scan")
-		if dir == "":
-			print("User canceled")
-			return
-		else:
-			print("Choosen dir: ", unicode(dir))
-			# we scan the directory 
-			# root = node(os.path.basename(str(dir)), None)  # BUG: relative path
-			root = node(os.path.dirname(unicode(dir)),os.path.basename(unicode(dir)), None)
-			root.isDir = True
-			recursive_scan(root)
-			model.root_node_list.append(root)
-			# we convert the tree of nodes to a tree of items to display it
-			root_item = convertBinaryTreeToDisplayDirOnly(root)
-			self.model_dir.appendRow(root_item)
-			self.root_item_list.append(root_item)
+
+		# we display a dialog to ask the user to select the root directory of the scan
+		dirToScan = QtGui.QFileDialog.getExistingDirectory(self, "Choose a directory to scan")
+
+		# we display a dialog because we want to warn the user 
+		# that the scan is ocurring in the background
+		popup = popupWaitEndScan()
+
+		# we launch a new thread, because the scan may be long,
+		# and we don't want to freeze the GUI
+		model.scan_thread = scanThread(unicode(dirToScan))
+
+		# we connect the thread to a signal handler to respond to end of thread
+		self.connect(model.scan_thread, QtCore.SIGNAL('thread_scan_finished'), popup.closePopup)
+
+		model.scan_thread.start()
+
+		# we display the popup
+		popup.exec_()
+
 
 	def updateFileDisplay(self, index):
 		"""To update file display in the right panel of the window""" 
 		# we create a new model
 		self.model_file = QtGui.QStandardItemModel(0,1)
 		self.model_file.setHorizontalHeaderItem(0, QtGui.QStandardItem("Files"))
-		displayFilesInDirFromIndex(index, self.model_file, self.model_dir)
+		displayFilesInDirFromIndex(index, self.model_file, model.model_dir)
 		self.view_list.setModel(self.model_file)
 
 	def newFile(self):
@@ -162,15 +167,15 @@ class customQMainWindow(QtGui.QMainWindow):
 
 	def clear(self):
 		"""To clear display"""
-		for i in range(0,len(self.root_item_list)):
-			del self.root_item_list[0]
+		for i in range(0,len(model.root_item_list)):
+			del model.root_item_list[0]
 		for i in range(0,len(model.root_node_list)):
 			del model.root_node_list[0]
 
 		# new dir model
-		self.model_dir = QtGui.QStandardItemModel(0,1)  # rows will be append after
-		self.model_dir.setHorizontalHeaderItem(0, QtGui.QStandardItem("Directories"))
-		self.view_tree.setModel(self.model_dir)
+		model.model_dir = QtGui.QStandardItemModel(0,1)  # rows will be append after
+		model.model_dir.setHorizontalHeaderItem(0, QtGui.QStandardItem("Directories"))
+		self.view_tree.setModel(model.model_dir)
 
 		# new view model
 		self.model_file = QtGui.QStandardItemModel(0,1)  # rows will be append after

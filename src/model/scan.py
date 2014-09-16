@@ -1,10 +1,44 @@
-#!/usr/bin/python3.2
+#!/usr/bin/python2.7
 # -*-coding:Utf-8 -*   # linux
 
 import os
+from PyQt4 import QtCore
 from pymediainfo import MediaInfo
 from src.model.node import node, GeneralMetadata, VideoTrack, AudioTrack, SubtitleTrack
 from src.model.model import model
+from src.view.display import *
+
+
+class scanThread(QtCore.QThread):
+
+	dirToScan = None
+
+	def __init__(self, dirToScan):
+		super(QtCore.QThread, self).__init__()
+		self.dirToScan = dirToScan
+		return
+
+	def run(self):
+		if self.dirToScan == "":
+			print "User canceled"
+			return
+		else:
+			print "Choosen dir: " + self.dirToScan
+			# we scan the directory 
+			# root = node(os.path.basename(str(dir)), None)  # BUG: relative path
+			root = node(os.path.dirname(self.dirToScan),os.path.basename(self.dirToScan), None)
+			root.isDir = True
+			recursive_scan(root)
+			model.root_node_list.append(root)
+			# we convert the tree of nodes to a tree of items to display it
+			root_item = convertBinaryTreeToDisplayDirOnly(root)
+			model.model_dir.appendRow(root_item)
+			model.root_item_list.append(root_item)
+
+		# we emit a signal to say that this task is done
+		self.emit(QtCore.SIGNAL('thread_scan_finished'))
+		return
+
 
 def recursive_scan(father):
 	"""To add recursively every file to the tree from the root of the scan"""
